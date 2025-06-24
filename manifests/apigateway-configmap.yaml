@@ -11,7 +11,7 @@ data:
       application:
         name: apigateway-service
       profiles:
-        active: local
+        active: prod
       cloud:
         gateway:
           default-filters:
