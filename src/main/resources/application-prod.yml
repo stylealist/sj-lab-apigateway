@@ -3,4 +3,4 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
     service-url:
-      defaultZone: https://eureka.sj-lab.co.kr/
+      defaultZone: http://localhost:30087/
