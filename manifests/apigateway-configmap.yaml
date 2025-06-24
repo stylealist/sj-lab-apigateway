@@ -10,8 +10,6 @@ data:
     spring:
       application:
         name: apigateway-service
-      profiles:
-        active: local
       cloud:
         gateway:
           default-filters:
