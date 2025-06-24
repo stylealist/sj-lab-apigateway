@@ -13,6 +13,8 @@ spec:
       labels:
         app: apigateway
     spec:
+      imagePullSecrets:
+        - name: ncp-registry-secret
       containers:
         - name: apigateway
           image: sj-lab-registry.kr.ncr.ntruss.com/sj-lab-apigateway:latest
