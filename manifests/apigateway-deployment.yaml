@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apigateway
+  namespace: sj-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apigateway
+  template:
+    metadata:
+      labels:
+        app: apigateway
+    spec:
+      containers:
+        - name: apigateway
+          image: sj-lab-registry.kr.ncr.ntruss.com/sj-lab-apigateway:latest
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+          env:
+            - name: SPRING_CONFIG_LOCATION
+              value: "file:/config/"
+      volumes:
+        - name: config-volume
+          configMap:
+            name: apigateway-config
