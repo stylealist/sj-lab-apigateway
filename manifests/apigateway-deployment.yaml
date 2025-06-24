@@ -19,7 +19,7 @@ spec:
         - name: apigateway
           image: sj-lab-registry.kr.ncr.ntruss.com/sj-lab-apigateway:latest
           ports:
-            - containerPort: 8000
+            - containerPort: 8100
           volumeMounts:
             - name: config-volume
               mountPath: /config
