@@ -1,3 +1,4 @@
+#test
 server:
   port: 8100
   #servlet:
