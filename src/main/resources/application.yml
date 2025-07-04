@@ -10,6 +10,9 @@ spring:
   profiles:
     active: local
   cloud:
+    cloud:
+      loadbalancer:
+        enabled: true
     gateway:
       default-filters:
         - name : GlobalFilter
