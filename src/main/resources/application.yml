@@ -7,8 +7,8 @@ server:
 spring:
   application:
     name: apigateway-service
-  profiles:
-    active: local
+#  profiles:
+#    active: local
   cloud:
     cloud:
       loadbalancer:
