@@ -50,3 +50,26 @@ spring:
 #                baseMessage: Hi, there.
 #                preLogger: true
 #                postLogger: true
+      globalcors:
+        add-to-simple-url-handler-mapping: true   # OPTIONS 처리 보장
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:4000
+              - https://sj-lab.co.kr
+              - https://www.sj-lab.co.kr
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: [ "*" ]
+            exposedHeaders:
+              - Content-Length
+              - Content-Range
+            allowCredentials: true
+            maxAge: 3600
+        # (선택) 중복 헤더 제거 - 백엔드도 CORS 넣는 경우 충돌 방지
+        default-filters:
+          - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_UNIQUE
