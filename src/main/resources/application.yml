@@ -37,6 +37,14 @@ spring:
             #              - AddRequestHeader=first-request, first-request-header2
             #              - AddResponseHeader=first-response, first-response-header2
             - name: CustomFilter
+        - id: fast-api-ai
+          uri: lb://FAST-API-AI
+          predicates:
+            - Path=/fast-api-ai/**
+          filters:
+            #              - AddRequestHeader=first-request, first-request-header2
+            #              - AddResponseHeader=first-response, first-response-header2
+            - name: CustomFilter
 #        - id: lb://MY-SECOND-SERVICE
 #          uri: http://localhost:8082/
 #          predicates:
