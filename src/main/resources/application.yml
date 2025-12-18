@@ -27,18 +27,21 @@ spring:
             - Path=/map/**
           filters:
             - name : CustomFilter
+            - PreserveHostHeader
         - id: sj-lab-scheduler
           uri: lb://SJ-LAB-SCHEDULER
           predicates:
             - Path=/scheduler/**
           filters:
             - name: CustomFilter
+            - PreserveHostHeader
         - id: fast-api-ai
           uri: lb://FAST-API-AI
           predicates:
             - Path=/fast-api-ai/**
           filters:
             - name: CustomFilter
+            - PreserveHostHeader
       globalcors:
         add-to-simple-url-handler-mapping: true   # OPTIONS 처리 보장
         corsConfigurations:
