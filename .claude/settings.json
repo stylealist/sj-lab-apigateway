@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "방금 수정/작성된 파일에 대해 가벼운 코드 리뷰를 수행하세요: $ARGUMENTS\n\n이 프로젝트는 Spring Cloud Gateway 기반 API 게이트웨이입니다. 아래 관점 위주로 확인하세요:\n- GatewayFilter/AbstractGatewayFilterFactory 구현의 버그 (예: PRE/POST 필터 순서, Config 필드 누락, null 처리)\n- application.yml의 routes/filters/predicates 설정 오류나 오탈자\n- 불필요하게 주석 처리된 코드나 죽은 코드 방치\n- 명백한 보안 문제 (예: CORS allowedOrigins 과다 허용, 시크릿 하드코딩)\n\n문제가 발견된 경우에만 파일:라인 기준으로 1~3문장으로 간결하게 한국어로 보고하세요. 문제가 없으면 아무 출력도 하지 마세요. 사소한 스타일 의견은 보고하지 마세요.",
+            "timeout": 90,
+            "statusMessage": "변경사항 리뷰 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
