@@ -42,6 +42,13 @@ spring:
           filters:
             - name: CustomFilter
             - PreserveHostHeader
+        - id: sj-lab-authserver
+          uri: lb://SJ-LAB-AUTHSERVER
+          predicates:
+            - Path=/auth/**
+          filters:
+            - name: CustomFilter
+            - PreserveHostHeader
       globalcors:
         add-to-simple-url-handler-mapping: true   # OPTIONS 처리 보장
         corsConfigurations:
@@ -60,5 +67,6 @@ spring:
             exposedHeaders:
               - Content-Length
               - Content-Range
+              - Content-Disposition
             allowCredentials: true
             maxAge: 3600
