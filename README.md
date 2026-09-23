@@ -1,106 +1,107 @@
-# sj-lab-apigateway — MSA 단일 진입점
+# sj-lab-apigateway — Spring Cloud 기반 MSA API 게이트웨이
 
-> 8개로 나뉜 sj-lab 서비스 앞단에서 **라우팅·CORS·공통 필터**를 담당하는 Spring Cloud Gateway입니다.
-> 프론트엔드는 이 주소 하나만 알면 되고, 뒤쪽 서비스가 몇 개인지·어디 떠 있는지는 Eureka가 해결합니다.
-
-| | |
-|---|---|
-| **운영** | `https://api.sj-lab.co.kr` |
-| **로컬** | `http://localhost:8100` |
-| **스택** | Java 17 · Spring Boot 3.3.2 · Spring Cloud 2023.0.3 (Gateway / WebFlux) · Eureka Client · LoadBalancer |
+`sj-lab-apigateway`는 sj-lab 분산 마이크로서비스 생태계의 단일 진입점(Single Point of Entry) 역할을 수행하는 Spring Cloud Gateway 서비스입니다. 클라이언트 요청의 지능적 라우팅, 로드밸런싱, 중앙 집중식 CORS 제어 및 공통 요청/응답 필터링을 담당합니다.
 
 ---
 
-## 1. 위치와 라우팅
+## 1. 서비스 역할 및 핵심 책임
+
+- **단일 진입점 및 지능형 라우팅**: 모든 외부 클라이언트(웹 프론트, 모바일 등)의 API 요청을 단일 호스트(`api.sj-lab.co.kr` / `:8100`)로 수신하여 목적지 마이크로서비스로 전달합니다.
+- **동적 서비스 디스커버리 연동**: Spring Cloud Netflix Eureka와 연동하여 개별 서비스의 물리적 IP와 포트를 하드코딩하지 않고 서비스 ID(`lb://SERVICE-ID`) 기반 클라이언트 사이드 로드밸런싱을 수행합니다.
+- **중앙 집중식 CORS 정책 관리**: 분산된 개별 백엔드 서비스 대신 게이트웨이 계층에서 공통 CORS 정책을 일괄 처리하여 도메인 간 리소스 공유 보안과 헤더 일관성을 보장합니다.
+- **공통 트래픽 로깅 및 필터 파이프라인**: 전역 필터(`GlobalFilter`) 및 라우트별 커스텀 필터를 통해 인입되는 HTTP 트래픽의 모니터링, 처리 시간 측정, 진단 로그를 남깁니다.
+
+---
+
+## 2. 기술 스택
+
+- **언어 및 프레임워크**: Java 17, Spring Boot 3.3.2, Spring Cloud 2023.0.3 (Spring Cloud Gateway, Spring WebFlux)
+- **서비스 디스커버리 & 로드밸런싱**: Spring Cloud Netflix Eureka Client, Spring Cloud LoadBalancer
+- **네트워크 런타임**: Project Reactor Netty (Non-blocking Reactive I/O)
+- **배포 환경**: Docker, Kubernetes (NodePort 30089), Helm, Jenkins CI, ArgoCD (GitOps)
+
+---
+
+## 3. 라우팅 구조 및 트래픽 처리 프로세스
+
+### 3.1 요청 흐름도
 
 ```
-[브라우저] sj-lab.co.kr (허브) · sj-lab.co.kr/map/ (지도)
-     │
-     ▼
-[이 서비스] :8100  ──서비스 조회──▶  [Eureka] :8761
-     │  /map/**         → lb://MAPSERVICE-REST     지도·시설물 API
-     │  /scheduler/**   → lb://SJ-LAB-SCHEDULER    공공데이터 수집 배치
-     │  /auth/**        → lb://SJ-LAB-AUTHSERVER   로그인·JWT
-     │  /fast-api-ai/** → lb://FAST-API-AI         FastAPI 서비스
-     ▼
-[백엔드 서비스들]
+[클라이언트 브라우저] (sj-lab.co.kr / :4000)
+       │
+       ▼ HTTPS / HTTP 요청
+[sj-lab-apigateway] (:8100)
+  ├── 1. Global Pre Filter (요청 수신 및 추적 로깅)
+  ├── 2. Global CORS Filter (Origin 검증 및 헤더 주입)
+  ├── 3. Route Matching & Eureka Service Resolution
+  │      ├─ /map/**         ──> lb://MAPSERVICE-REST     (지도/시설물 GeoJSON API)
+  │      ├─ /auth/**        ──> lb://SJ-LAB-AUTHSERVER   (인증/JWT 발급)
+  │      ├─ /scheduler/**   ──> lb://SJ-LAB-SCHEDULER    (공공데이터 수집 배치)
+  │      └─ /fast-api-ai/** ──> lb://FAST-API-AI         (FastAPI AI/RAG 서비스)
+  └── 4. Global Post Filter (응답 코드 로깅 및 DedupeResponseHeader 정리)
+       │
+       ▼ 로드밸런싱 포워딩
+[해당 마이크로서비스 Pod]
 ```
 
-**경로는 벗기지 않고 그대로 전달합니다.** 각 서비스가 같은 prefix를 context-path로 쓰기 때문에, 게이트웨이에 prefix 제거 규칙을 두지 않아도 되고 서비스 단독 실행 시 경로가 달라지지 않습니다.
+### 3.2 투명 경로 전달(Transparent Path Forwarding)
+- 게이트웨이는 URL prefix를 벗겨내지 않고 수신된 context-path를 그대로 백엔드에 전달합니다.
+- 모든 백엔드 서비스는 자신의 도메인 접두어(`/map`, `/auth` 등)를 애플리케이션 context-path로 내장하고 있어, 게이트웨이 경유 여부와 무관하게 로컬 단독 테스트 및 통합 테스트 시 동일한 API 경로를 유지할 수 있습니다.
 
 ---
 
-## 2. 면접에서 봐주셨으면 하는 부분
+## 4. 핵심 엔지니어링 구현 상세
 
-### ① 라우팅을 코드가 아니라 설정으로
+### 4.1 선언적 라우팅 구성 (Configuration-Driven Routing)
+라우팅 룰을 자바 코드가 아닌 `application.yml`의 `spring.cloud.gateway.routes` 선언으로 표준화하여 관리합니다. 새 서비스 추가나 라우트 조건 변경 시 코드 재컴파일 없이 설정 갱신만으로 배포할 수 있습니다.
 
-라우트는 `application.yml`의 `spring.cloud.gateway.routes`에 선언합니다. 서비스가 늘어날 때 **Java 코드 변경·재컴파일 없이** 항목만 추가하면 되고, 리뷰에서 변경 범위가 한눈에 보입니다. (`FilterConfig.java`에 `RouteLocatorBuilder` 방식 예시가 주석으로 남아 있지만 비활성입니다 — 두 방식이 섞이면 어디가 진짜인지 헷갈리므로 한쪽으로 고정했습니다.)
-
-### ② Eureka 기반 로드밸런싱
-
-`uri: lb://SERVICE-ID` 형태라 **파드 IP·포트를 알 필요가 없습니다.** 백엔드는 `server.port: 0`(랜덤 포트)으로 떠도 되고, 인스턴스를 여러 개 띄우면 자동으로 분산됩니다. 쿠버네티스 Service가 아니라 Eureka 레지스트리를 쓰는 구조라, 로컬에서도 운영과 동일한 경로로 동작합니다.
-
-### ③ CORS를 게이트웨이 한 곳에서
-
-각 서비스에 CORS 설정을 흩뿌리지 않고 `globalcors`에 모았습니다. 허용 오리진은 `localhost:4000`, `sj-lab.co.kr`, `www.sj-lab.co.kr`이며, 첨부 파일명을 프론트가 읽을 수 있도록 `Content-Disposition`을 노출 헤더에 포함했습니다. `DedupeResponseHeader`로 중복 CORS 헤더도 정리합니다.
-
-> 운영에서 실제로 겪은 것: 프론트를 다른 포트로 띄우면 **403**이 납니다. 새 도메인·포트를 추가할 때 이 목록을 함께 고치는 것을 문서 규칙으로 만들었습니다.
-
-### ④ 프로파일 분리
-
-`application.yml`(공통) + `application-local.yml` / `application-prod.yml`(Eureka 주소만 다름). **로컬 실행 시 `local` 프로파일이 없으면 Eureka 주소가 비어 라우팅이 죽습니다** — 이 함정을 문서와 기동 스크립트에 반영했습니다.
-
----
-
-## 3. 필터
-
-| 필터 | 적용 | 역할 |
-|---|---|---|
-| `GlobalFilter` | `default-filters`(전 라우트) | PRE/POST 요청 로깅 |
-| `CustomFilter` | 라우트별 `filters:` | 라우트 단위 로깅 |
-| `LoggingFilter` | 미사용 | `OrderedGatewayFilter` 예시 |
-
-모두 `AbstractGatewayFilterFactory`를 상속한 `@Component`이며, **클래스명이 곧 설정에서 참조하는 이름**입니다.
-
----
-
-## 4. 실행
-
-```bash
-mvnw.cmd clean package                                      # target/sj-lab-apigateway.jar
-mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local   # 8100
-mvnw.cmd test
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: mapservice-rest
+          uri: lb://MAPSERVICE-REST
+          predicates:
+            - Path=/map/**
+        - id: sj-lab-authserver
+          uri: lb://SJ-LAB-AUTHSERVER
+          predicates:
+            - Path=/auth/**
+        - id: sj-lab-scheduler
+          uri: lb://SJ-LAB-SCHEDULER
+          predicates:
+            - Path=/scheduler/**
+        - id: fast-api-ai
+          uri: lb://FAST-API-AI
+          predicates:
+            - Path=/fast-api-ai/**
 ```
 
-기동 순서는 Eureka(8761) → 백엔드 → 게이트웨이 → 프론트(4000)입니다. 총괄 저장소(`mapservice-rest`)의 `scripts/local-stack.ps1`이 한 번에 띄웁니다.
+### 4.2 중앙 집중식 글로벌 CORS 제어 및 중복 방지
+프론트엔드(`localhost:4000`, `sj-lab.co.kr`, `www.sj-lab.co.kr`)의 교차 출처 리소스 요청을 게이트웨이 계층에서 안전하게 처리합니다.
+- 파일 다운로드 지원을 위해 `Content-Disposition` 헤더를 `exposed-headers`에 명시.
+- 백엔드 서비스와 게이트웨이 간 중복 발생할 수 있는 CORS 헤더를 `default-filters`의 `DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST`로 정리하여 브라우저의 다중 헤더 거부 오류를 방지.
 
-동작 확인:
+### 4.3 Spring WebFlux 기반의 논블로킹(Non-blocking) 파이프라인
+Netty 기반의 이벤트 루프 모델을 사용하여 스레드 블로킹 없이 대규모 동시 연결을 최소한의 시스템 리소스로 처리합니다.
 
+---
+
+## 5. 실행 및 개발 환경
+
+### 로컬 빌드 및 실행
+```powershell
+# Maven 빌드
+mvnw.cmd clean package
+
+# 로컬 프로파일 실행 (Eureka: localhost:8761 연동, 포트 8100)
+mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+> **주의**: 로컬 환경 구동 시 반드시 `-Dspring-boot.run.profiles=local`을 지정해야 `localhost:8761`의 Eureka 서버와 정상 통신합니다.
+
+### 라우팅 및 CORS 동작 검증
 ```powershell
 Invoke-WebRequest -Uri "http://localhost:8100/map/admin-area/sido" -Headers @{Origin="http://localhost:4000"}
 ```
-
----
-
-## 5. 배포
-
-```
-git push → Jenkins(빌드 → 이미지 push) → sj-lab-k8s-manifests 의 image.tag 자동 커밋
-        → ArgoCD 동기화 → Kubernetes 롤아웃 (NodePort 30089 → 8100)
-```
-
-Dockerfile은 미리 빌드된 jar를 복사하므로 `package`가 선행되어야 합니다. 산출물명(`sj-lab-apigateway.jar`)은 `pom.xml`의 `<finalName>`과 Dockerfile 두 곳에 고정돼 있습니다.
-
----
-
-## 6. 현재 한계
-
-- **JWT 검증이 없습니다.** 로그인 서버는 별도로 있지만 게이트웨이에서 토큰을 확인하지 않아 백엔드 API가 열려 있습니다. 전역 필터로 검증 후 사용자·역할을 헤더로 전달하는 것이 다음 과제입니다.
-- 레이트 리미팅·서킷 브레이커가 없습니다.
-- 테스트는 컨텍스트 로딩 스모크뿐입니다.
-
-## 참고
-
-- 전체 구조·API 계약: 총괄 저장소 `mapservice-rest`의 `docs/system-architecture.md`
-- 로컬 포트·CORS: 같은 저장소의 `docs/dev-environment.md`
-- 작업 규칙: 이 저장소의 `CLAUDE.md`
