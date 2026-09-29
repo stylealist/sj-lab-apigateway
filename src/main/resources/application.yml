@@ -49,6 +49,15 @@ spring:
           filters:
             - name: CustomFilter
             - PreserveHostHeader
+        # 공개 API(sj-lab-openapi). 정적 활용 페이지는 sj-lab.co.kr/openapi/ 에서 웹서버가 서빙하므로
+        # 경로를 /openapi 가 아니라 /open-api 로 둔다(같은 도메인이 아니라 겹치진 않지만 헷갈리지 않게).
+        - id: sj-lab-openapi
+          uri: lb://SJ-LAB-OPENAPI
+          predicates:
+            - Path=/open-api/**
+          filters:
+            - name: CustomFilter
+            - PreserveHostHeader
       globalcors:
         add-to-simple-url-handler-mapping: true   # OPTIONS 처리 보장
         corsConfigurations:
