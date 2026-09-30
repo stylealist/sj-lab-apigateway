@@ -98,6 +98,11 @@ spring:
 ### 4.2 중앙 집중식 글로벌 CORS 제어 및 중복 방지
 프론트엔드(`localhost:4000`, `sj-lab.co.kr`, `www.sj-lab.co.kr`)의 교차 출처 리소스 요청을 게이트웨이 계층에서 안전하게 처리합니다.
 - 파일 다운로드 지원을 위해 `Content-Disposition` 헤더를 `exposed-headers`에 명시.
+- **공개 API(`/open-api/**`)만 오리진을 개방**합니다(2026-09-30). 남의 웹사이트에서도 부를 수 있어야 하기 때문이며,
+  `allowedOrigins: "*"` + `allowCredentials: false` + `GET`·`OPTIONS` 만 허용하고 요청 헤더는 `Content-Type`·`X-API-Key`로 한정합니다.
+  그 밖의 경로(`/map/**`, `/auth/**` 등)는 종전처럼 위 세 오리진만 허용되며 허용되지 않은 Origin 은 `403`입니다.
+  설정 맵에서 **`'[/open-api/**]'` 블록이 `'[/**]'` 보다 먼저 와야 합니다** — `UrlBasedCorsConfigurationSource`가
+  맵을 순서대로 훑어 처음 맞는 패턴을 쓰기 때문에, 뒤에 두면 `'[/**]'`가 먼저 잡혀 외부 오리진이 다시 403이 됩니다.
 - 백엔드 서비스와 게이트웨이 간 중복 발생할 수 있는 CORS 헤더를 `default-filters`의 `DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST`로 정리하여 브라우저의 다중 헤더 거부 오류를 방지.
 
 ### 4.3 Spring WebFlux 기반의 논블로킹(Non-blocking) 파이프라인
