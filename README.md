@@ -50,6 +50,7 @@
   │      ├─ /auth/**        ──> lb://SJ-LAB-AUTHSERVER   (인증/JWT 발급)
   │      ├─ /scheduler/**   ──> lb://SJ-LAB-SCHEDULER    (공공데이터 수집 배치)
   │      ├─ /open-api/**    ──> lb://SJ-LAB-OPENAPI      (공개 API 카탈로그·중계·키)
+  │      ├─ /estate/**      ──> lb://SJ-LAB-ESTATE       (부동산 실거래 조회 API)
   │      └─ /fast-api-ai/** ──> lb://FAST-API-AI         (FastAPI AI/RAG 서비스)
   └── 4. Global Post Filter (응답 코드 로깅 및 DedupeResponseHeader 정리)
        │
@@ -89,6 +90,10 @@ spring:
           uri: lb://SJ-LAB-SCHEDULER
           predicates:
             - Path=/scheduler/**
+        - id: sj-lab-estate
+          uri: lb://SJ-LAB-ESTATE
+          predicates:
+            - Path=/estate/**
         - id: fast-api-ai
           uri: lb://FAST-API-AI
           predicates:

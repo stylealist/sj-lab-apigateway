@@ -49,6 +49,15 @@ spring:
           filters:
             - name: CustomFilter
             - PreserveHostHeader
+        # 부동산 실거래(sj-lab-estate). 2026-10-12 신설 — 그 전에는 fast-api-ai 의
+        # /fast-api-ai/estate/** 로 서비스했다. fast-api-ai 는 AI 기능만 담게 분리했다.
+        - id: sj-lab-estate
+          uri: lb://SJ-LAB-ESTATE
+          predicates:
+            - Path=/estate/**
+          filters:
+            - name: CustomFilter
+            - PreserveHostHeader
         # 공개 API(sj-lab-openapi). 정적 활용 페이지는 sj-lab.co.kr/openapi/ 에서 웹서버가 서빙하므로
         # 경로를 /openapi 가 아니라 /open-api 로 둔다(같은 도메인이 아니라 겹치진 않지만 헷갈리지 않게).
         - id: sj-lab-openapi
